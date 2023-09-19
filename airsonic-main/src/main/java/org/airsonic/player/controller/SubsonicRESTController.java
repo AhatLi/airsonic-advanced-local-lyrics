@@ -63,7 +63,11 @@ import javax.servlet.http.HttpServletRequestWrapper;
 import javax.servlet.http.HttpServletResponse;
 import javax.xml.datatype.XMLGregorianCalendar;
 
+import java.io.BufferedReader;
+import java.io.FileInputStream;
+import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Path;
 import java.security.Principal;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -2200,14 +2204,13 @@ public class SubsonicRESTController {
     }
 
     public String getContentMain(String title) {
-        for (org.airsonic.player.domain.MusicFolder folder: settingsService.getAllMusicFolders()) {
-            File[] fileList = folder.getPath().listFiles();
-            for (int i = 0; i < fileList.length; i++) {
-                File file = fileList[i];
-                if (file.isFile() && file.getName().contains(title) && file.getName().toLowerCase().contains(".lrc")) {
+        for (org.airsonic.player.domain.MusicFolder folder: mediaFolderService.getAllMusicFolders()) {
+            Path fileList = folder.getPath();
+            for (int i = 0; i < fileList.getNameCount(); i++) {
+                if (fileList.getName(i).toString().contains(title) && fileList.getName(i).toString().toLowerCase().contains(".lrc")) {
                     String str = "";
                     try {
-                        BufferedReader br = new BufferedReader(new InputStreamReader(new FileInputStream(file), "UTF8"));
+                        BufferedReader br = new BufferedReader(new InputStreamReader(new FileInputStream(fileList.getName(i).toString()), "UTF8"));
                         br.readLine();
                         br.readLine();
                         br.readLine();
@@ -2221,42 +2224,6 @@ public class SubsonicRESTController {
                         ex.printStackTrace();
                     }
                     return str;
-                } else if (file.isDirectory()) {
-                    String r = getContentSub(file, title);
-                    if (!r.isEmpty()) {
-                        return r;
-                    }
-                }
-            }
-        }
-        return "";
-    }
-
-    public String getContentSub(File subdir, String title) {
-        File[] fileList = subdir.listFiles();
-        for (int i = 0; i < fileList.length; i++) {
-            File file = fileList[i];
-            if (file.isFile() && file.getName().contains(title) && file.getName().toLowerCase().contains(".lrc")) {
-                String str = "";
-                try {
-                    BufferedReader br = new BufferedReader(new InputStreamReader(new FileInputStream(file), "UTF8"));
-                    br.readLine();
-                    br.readLine();
-                    br.readLine();
-                    String line = br.readLine();
-                    while (line != null) {
-                        str += line.substring(10) + "\n";
-                        line = br.readLine();
-                    }
-                    br.close();
-                } catch (Exception ex) {
-                    ex.printStackTrace();
-                }
-                return str;
-            } else if (file.isDirectory()) {
-                String r = getContentSub(file, title);
-                if (!r.isEmpty()) {
-                    return r;
                 }
             }
         }
