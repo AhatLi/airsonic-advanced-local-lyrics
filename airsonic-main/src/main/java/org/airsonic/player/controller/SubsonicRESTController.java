@@ -2189,16 +2189,79 @@ public class SubsonicRESTController {
         request = wrapRequest(request);
         String artist = request.getParameter("artist");
         String title = request.getParameter("title");
-        LyricsInfo lyrics = lyricsWSController.getLyrics(artist, title);
 
         Lyrics result = new Lyrics();
-        result.setArtist(lyrics.getArtist());
-        result.setTitle(lyrics.getTitle());
-        result.setContent(lyrics.getLyrics());
+        result.setArtist(artist);
+        result.setTitle(title);
+        result.setContent(getContentMain(title));
 
         Response res = createResponse();
         res.setLyrics(result);
         jaxbWriter.writeResponse(request, response, res);
+    }
+
+    public String getContentMain(String title) {
+        for (org.airsonic.player.domain.MusicFolder folder: settingsService.getAllMusicFolders()) {
+            File[] fileList = folder.getPath().listFiles();
+            for (int i = 0; i < fileList.length; i++) {
+                File file = fileList[i];
+                if (file.isFile() && file.getName().contains(title) && file.getName().toLowerCase().contains(".lrc")) {
+                    String str = "";
+                    try {
+                        BufferedReader br = new BufferedReader(new InputStreamReader(new FileInputStream(file), "UTF8"));
+                        br.readLine();
+                        br.readLine();
+                        br.readLine();
+                        String line = br.readLine();
+                        while (str != null) {
+                            str += line.substring(10) + "\n";
+                            line = br.readLine();
+                        }
+                        br.close();
+                    } catch (Exception ex) {
+                        ex.printStackTrace();
+                    }
+                    return str;
+                } else if (file.isDirectory()) {
+                    String r = getContentSub(file, title);
+                    if (!r.isEmpty()) {
+                        return r;
+                    }
+                }
+            }
+        }
+        return "";
+    }
+
+    public String getContentSub(File subdir, String title) {
+        File[] fileList = subdir.listFiles();
+        for (int i = 0; i < fileList.length; i++) {
+            File file = fileList[i];
+            if (file.isFile() && file.getName().contains(title) && file.getName().toLowerCase().contains(".lrc")) {
+                String str = "";
+                try {
+                    BufferedReader br = new BufferedReader(new InputStreamReader(new FileInputStream(file), "UTF8"));
+                    br.readLine();
+                    br.readLine();
+                    br.readLine();
+                    String line = br.readLine();
+                    while (line != null) {
+                        str += line.substring(10) + "\n";
+                        line = br.readLine();
+                    }
+                    br.close();
+                } catch (Exception ex) {
+                    ex.printStackTrace();
+                }
+                return str;
+            } else if (file.isDirectory()) {
+                String r = getContentSub(file, title);
+                if (!r.isEmpty()) {
+                    return r;
+                }
+            }
+        }
+        return "";
     }
 
     @RequestMapping("/setRating")
